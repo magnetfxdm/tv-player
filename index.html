@@ -28,6 +28,10 @@
     font-family:var(--mono); font-size:12px; color:rgba(255,255,255,.35);
     letter-spacing:.05em; pointer-events:none;
   }
+  #img{
+    display:none; width:100%; height:100%;
+    object-fit:contain; background:#000;
+  }
   #setup{
     height:100%; display:flex; align-items:flex-start; justify-content:center;
     padding: 6vh 20px; overflow-y:auto;
@@ -84,6 +88,7 @@
   <div id="player">
     <video id="frame" autoplay muted playsinline
       style="width:100%;height:100%;object-fit:contain;background:#000;"></video>
+    <img id="img" alt="">
     <div class="tag" id="tag"></div>
   </div>
 
@@ -114,7 +119,7 @@
         </p>
       </div>
       <p class="hint">
-        <b>Catatan:</b> alamat ini otomatis muter video default. Kalau mau ganti/generate video lain lewat Google Drive, tempel link-nya di atas dulu.
+        <b>Catatan:</b> alamat ini otomatis menampilkan konten default. Kalau mau ganti/generate video lain lewat Google Drive, tempel link-nya di atas dulu.
       </p>
     </div>
   </div>
@@ -165,10 +170,9 @@ function copyUrl(){
 }
 
 // ===== Boot: cek apakah ini mode player atau setup =====
-// Video di-hosting langsung di repo GitHub (magnetfxdm/tv-player),
-// supaya banyak TV bisa narik file yang sama secara bersamaan
-// tanpa saling rebutan koneksi/bandwidth, dan tanpa limit ukuran file.
-const DEFAULT_VIDEO = "https://magnetfxdm.github.io/tv-player/Best_Commission_Magnet_Oktober_2026.png";
+// Konten di-hosting langsung di repo GitHub (magnetfxdm/tv-player).
+// Bisa gambar (.png/.jpg/.webp/.gif) atau video (.mp4) -- dideteksi otomatis dari ekstensi.
+const DEFAULT_MEDIA = "https://magnetfxdm.github.io/tv-player/Best_Commission_Magnet_Oktober_2026.png";
 
 (function boot(){
   const params = new URLSearchParams(window.location.search);
@@ -178,8 +182,8 @@ const DEFAULT_VIDEO = "https://magnetfxdm.github.io/tv-player/Best_Commission_Ma
   let src;
   if(videoParam){
     src = decodeURIComponent(videoParam);
-  } else if(!wantsSetup && DEFAULT_VIDEO){
-    src = DEFAULT_VIDEO;
+  } else if(!wantsSetup && DEFAULT_MEDIA){
+    src = DEFAULT_MEDIA;
   } else {
     return;
   }
@@ -189,12 +193,30 @@ const DEFAULT_VIDEO = "https://magnetfxdm.github.io/tv-player/Best_Commission_Ma
   player.classList.add('active');
 
   const frame = document.getElementById('frame');
+  const img = document.getElementById('img');
   const tag = document.getElementById('tag');
   tag.textContent = '1 / 1';
 
+  const isImage = /\.(png|jpe?g|webp|gif)(\?|#|$)/i.test(src);
+
+  // ---------- MODE GAMBAR ----------
+  if(isImage){
+    frame.style.display = 'none';
+    img.style.display = 'block';
+    // kalau gagal load (koneksi TV putus dsb), coba lagi tiap 5 detik
+    img.onerror = function(){
+      setTimeout(function(){
+        img.src = src + (src.includes('?') ? '&' : '?') + '_r=' + Date.now();
+      }, 5000);
+    };
+    img.src = src;
+    return;
+  }
+
+  // ---------- MODE VIDEO ----------
   frame.loop = true;
 
-  // ---- Auto-recovery kalau video macet/error/blank ----
+  // Auto-recovery kalau video macet/error/blank
   const WATCHDOG_MS = 8000;
   let lastTime = -1;
   let stuckSince = null;
